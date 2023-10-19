@@ -72,53 +72,17 @@
                 </article>
 
                 <article>
-                    <h1>Stay on track</h1>
-                    <p>
-                        Do you know where you are spending your money? If you
-                        really stop to track it down, you would get surprised!
-                        Proper budget management depends on real data... and
-                        this app will help you with that!
-                    </p>
-                </article>
-
-                <article>
-                    <h1>Alerts</h1>
-                    <p>
-                        What if your clothing budget ended? You will get an
-                        alert. The goal is to never go over the budget.
-                    </p>
-                </article>
-
-                <article>
-                    <h1>Results</h1>
-                    <p>
-                        People who stick to a financial plan, budgeting every
-                        expense, get out of debt faster! Also, they to live
-                        happier lives... since they expend without guilt or
-                        fear... because they know it is all good and accounted
-                        for.
-                    </p>
-                </article>
-
-                <article>
                     <h1>Pie Chart</h1>
                     <p>
                         <canvas id="pieChart" width="400" height="400"></canvas>
                     </p>
                 </article>
 
-                <!-- <article>
+                <article>
                     <h1>Donut Chart</h1>
-                    <p>
-                        <canvas
-                            id="donutChart"
-                            width="400"
-                            height="400"
-                        ></canvas>
+                    <p id="d3-paragraph">
+                        <svg id="d3-chart"></svg>
                     </p>
-                </article> -->
-                <article id="d3Chart">
-                    <svg width="400" height="400"></svg>
                 </article>
             </div>
         </main>
@@ -142,7 +106,7 @@
         <script src="https://d3js.org/d3.v3.min.js"></script>
 
         <script>
-            const dataSource = {
+            const pieDataSource = {
                 datasets: [
                     {
                         data: [],
@@ -157,13 +121,25 @@
                 labels: [],
             };
 
+            const d3DataSource = {
+                backgroundColor: ["#ffcd56", "#ff6384", "#36a2eb", "#fd6b19"],
+                data: [],
+                labels: [],
+            };
+
             function getBudget() {
                 axios.get("http://localhost:3000/budget").then((res) => {
                     const myBudget = res.data.myBudget;
                     const len = myBudget.length;
                     for (let i = 0; i < len; ++i) {
-                        dataSource.datasets[0].data[i] = myBudget[i].budget;
-                        dataSource.labels[i] = myBudget[i].title;
+                        const budget = myBudget[i].budget;
+                        const title = myBudget[i].title;
+
+                        pieDataSource.datasets[0].data[i] = budget;
+                        pieDataSource.labels[i] = title;
+
+                        d3DataSource.data[i] = { label: title, value: budget };
+                        d3DataSource.labels[i] = title;
                     }
                     createCharts();
                 });
@@ -176,64 +152,149 @@
                     return;
                 }
 
-                const ctx = chartElement.getContext("2d");
-                const pieChart = new Chart(ctx, {
+                const context = chartElement.getContext("2d");
+                const pieChart = new Chart(context, {
                     type: "pie",
-                    data: dataSource,
+                    data: pieDataSource,
                 });
 
                 // ------------------------------------------------------------
 
                 // d3 chart
-                // select the svg element within the "d3Chart" div
-                const svg = d3.select("#d3Chart svg");
+                svg.append("g").attr("class", "slices");
+                svg.append("g").attr("class", "labels");
+                svg.append("g").attr("class", "lines");
+                change(d3DataSource.data);
+            }
 
-                // height and width of svg
-                const height = 400;
-                const width = 400;
-                const radius = Math.min(height, width) / 2;
+            // source: https://gist.github.com/dbuezas/9306799
+            // height and width of svg
+            const height = 208;
+            const width = 400;
+            const radius = Math.min(height, width) / 2;
 
-                // TODO
-                const pie = d3.layout
-                    .pie()
-                    .sort(null)
-                    .value((d) => d.data);
+            // select the svg element within the "d3-chart" svg
+            const svg = d3.select("#d3-chart").append("g");
+            svg.attr("transform", `translate(${width / 2}, ${height / 2})`);
 
-                const arc = d3.svg
-                    .arc()
-                    .outerRadius(radius * 0.8)
-                    .innerRadius(0);
+            const pieGenerator = d3.layout
+                .pie()
+                .sort(null)
+                .value((d) => d.value);
 
-                function key(d) {
-                    return d.data;
-                }
+            const arcGenerator = d3.svg
+                .arc()
+                .innerRadius(radius * 0.4)
+                .outerRadius(radius * 0.8);
 
-                // use your data source (dataSource) to generate the chart
-                const data = dataSource.datasets[0].data;
+            const outerArc = d3.svg
+                .arc()
+                .innerRadius(radius * 0.9)
+                .outerRadius(radius * 0.9);
 
-                const color = d3.scale.category20c();
+            const color = d3.scale
+                .ordinal()
+                .domain(d3DataSource.labels)
+                .range(d3DataSource.backgroundColor);
 
-                const path = svg
-                    .selectAll("path")
-                    .data(pie(data))
+            function change(data) {
+                // pie slices
+                const slice = svg
+                    .select(".slices")
+                    .selectAll("path.slice")
+                    .data(pieGenerator(data), (d) => d.data.label);
+
+                slice
                     .enter()
                     .append("path")
-                    .attr("d", arc)
-                    .attr("fill", (d, i) => color(i));
+                    .attr("class", "slice")
+                    .style("fill", (d) => color(d.data.label));
 
-                // add text labels
-                const label = svg
+                slice
+                    .transition()
+                    .duration(1000)
+                    .attrTween("d", function (d) {
+                        this._current = this._current || d;
+                        const interpolateFn = d3.interpolate(this._current, d);
+                        this._current = interpolateFn(0);
+                        return (t) => arcGenerator(interpolateFn(t));
+                    });
+
+                slice.exit().remove();
+
+                // text labels
+
+                const text = svg
+                    .select(".labels")
                     .selectAll("text")
-                    .data(pie(data))
-                    .enter()
+                    .data(pieGenerator(data), (d) => d.data.label);
+
+                text.enter()
                     .append("text")
-                    .attr("transform", (d) => {
-                        const pos = arc.centroid(d);
-                        return `translate(${pos})`;
-                    })
                     .attr("dy", ".35em")
-                    .style("text-anchor", "middle")
                     .text((d) => d.data.label);
+
+                function midAngle(d) {
+                    return d.startAngle + (d.endAngle - d.startAngle) / 2;
+                }
+
+                text.transition()
+                    .duration(1000)
+                    .attrTween("transform", function (d) {
+                        this._current = this._current || d;
+                        const interpolateFn = d3.interpolate(this._current, d);
+                        this._current = interpolateFn(0);
+                        return (t) => {
+                            const d2 = interpolateFn(t);
+                            const pos = outerArc.centroid(d2);
+                            pos[0] = radius * (midAngle(d2) < Math.PI ? 1 : -1);
+                            return `translate(${pos})`;
+                        };
+                    })
+                    .styleTween("text-anchor", function (d) {
+                        this._current = this._current || d;
+                        const interpolateFn = d3.interpolate(this._current, d);
+                        this._current = interpolateFn(0);
+                        return (t) => {
+                            const d2 = interpolateFn(t);
+                            return midAngle(d2) < Math.PI ? "start" : "end";
+                        };
+                    });
+
+                text.exit().remove();
+
+                // slice to text polylines
+
+                const polyline = svg
+                    .select(".lines")
+                    .selectAll("polyline")
+                    .data(pieGenerator(data), (d) => d.data.label);
+
+                polyline.enter().append("polyline");
+
+                polyline
+                    .transition()
+                    .duration(1000)
+                    .attrTween("points", function (d) {
+                        this._current = this._current || d;
+                        const interpolateFn = d3.interpolate(this._current, d);
+                        this._current = interpolateFn(0);
+                        return (t) => {
+                            const d2 = interpolateFn(t);
+                            const pos = outerArc.centroid(d2);
+                            pos[0] =
+                                radius *
+                                0.95 *
+                                (midAngle(d2) < Math.PI ? 1 : -1);
+                            return [
+                                arcGenerator.centroid(d2),
+                                outerArc.centroid(d2),
+                                pos,
+                            ];
+                        };
+                    });
+
+                polyline.exit().remove();
             }
 
             getBudget();
