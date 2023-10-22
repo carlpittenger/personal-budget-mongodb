@@ -110,21 +110,16 @@
                 datasets: [
                     {
                         data: [],
-                        backgroundColor: [
-                            "#ffcd56",
-                            "#ff6384",
-                            "#36a2eb",
-                            "#fd6b19",
-                        ],
+                        backgroundColor: [],
                     },
                 ],
                 labels: [],
             };
 
             const d3DataSource = {
-                backgroundColor: ["#ffcd56", "#ff6384", "#36a2eb", "#fd6b19"],
-                data: [],
                 labels: [],
+                backgroundColor: [],
+                data: [],
             };
 
             function getBudget() {
@@ -134,11 +129,14 @@
                     for (let i = 0; i < len; ++i) {
                         const budget = myBudget[i].budget;
                         const title = myBudget[i].title;
+                        const color = myBudget[i].color;
 
                         pieDataSource.datasets[0].data[i] = budget;
+                        pieDataSource.datasets[0].backgroundColor[i] = color;
                         pieDataSource.labels[i] = title;
 
                         d3DataSource.data[i] = { label: title, value: budget };
+                        d3DataSource.backgroundColor[i] = color;
                         d3DataSource.labels[i] = title;
                     }
                     createCharts();

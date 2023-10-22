@@ -1,5 +1,4 @@
 import express from "express";
-// import { readFile, writeFile } from "node:fs";
 import cors from "cors";
 // import { json } from "body-parser";
 import bodyParser from "body-parser";
@@ -8,19 +7,9 @@ import { connect, Schema, model } from "mongoose";
 
 const port = 3000;
 
-const app = express();
+function main() {
+    const app = express();
 
-const colors = {
-    blue: "#0000FF",
-    green: "#00FF00",
-    red: "#FF0000",
-    yellow: "#FFFF00",
-    orange: "#FF8000",
-    purple: "#800080",
-    gray: "#808080",
-};
-
-async function main() {
     // connect to mongodb
     connect("mongodb://localhost/budget", {
         // useNewUrlParser: true,
@@ -51,23 +40,11 @@ async function main() {
     app.get("/budget", async (_req, res) => {
         try {
             const myBudget = await Budget.find();
-            console.log(myBudget);
             res.json({ myBudget });
         } catch (err) {
             console.error(`Error reading budget data: ${err}`);
             res.status(500).send("Internal Server Error");
         }
-
-        // readFile("budget.json", "utf8", (err, data) => {
-        //     if (err !== null) {
-        //         console.error(`Error reading JSON file: ${err}`);
-        //         res.status(500).send("Internal Server Error");
-        //         return;
-        //     }
-
-        //     const budget = JSON.parse(data);
-        //     res.json(budget);
-        // });
     });
 
     // endpoint to update data
@@ -83,35 +60,6 @@ async function main() {
             console.error(`Error adding budget data: ${err}`);
             res.status(500).send("Internal Server Error");
         }
-
-        // // read the existing budget data
-        // readFile("budget.json", "utf8", (err, data) => {
-        //     if (err !== null) {
-        //         console.error(`Error reading JSON file: ${err}`);
-        //         res.status(500).send("Internal Server Error");
-        //         return;
-        //     }
-
-        //     const currentBudget = JSON.parse(data);
-
-        //     // update the budget data
-        //     currentBudget.myBudget = updatedBudget;
-
-        //     // write the updated data back to the file
-        //     writeFile(
-        //         "budget.json",
-        //         JSON.stringify(currentBudget, null, 4),
-        //         (err) => {
-        //             if (err) {
-        //                 console.error(`Error writing JSON file: ${err}`);
-        //                 res.status(500).send("Internal Server Error");
-        //                 return;
-        //             }
-
-        //             res.status(200).send("Budget updated successfully");
-        //         },
-        //     );
-        // });
     });
 
     app.listen(port, () => {
@@ -119,4 +67,4 @@ async function main() {
     });
 }
 
-await main();
+main();
